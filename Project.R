@@ -1,3 +1,5 @@
+# ======================== Load Libraries ==========================================================
+
 library(data.table) 
 library(car)
 library(ggplot2)
@@ -28,16 +30,29 @@ library(rpart.plot)
 # YEARS SINCE LAST PROMOTION	Numerical Value - LAST PROMOTION
 # YEARS WITH CURRENT MANAGER	Numerical Value - YEARS SPENT WITH CURRENT MANAGER
 
-
-setwd('/Users/xb/Desktop/Uni Notes/Y2S2/BC2407/BC2407 Course Materials/Project')
+# =========================== Set WD =========================================================
+setwd("C:/Users/gyong/OneDrive - Nanyang Technological University/NTU/NTU Studies/Year 2/NTU Y2S2/BC2407/Group Project")
 set.seed(2025)
 
-data<-fread('/Users/xb/Desktop/Uni Notes/Y2S2/BC2407/BC2407 Course Materials/Project/WA_Fn-UseC_-HR-Employee-Attrition.csv')
+data<-fread("WA_Fn-UseC_-HR-Employee-Attrition.csv", stringsAsFactors = TRUE)
 dim(data) #1470 rows, 35 columns
 
 
-summary(data) #identified columns stored as char, will converted them to factor
-char_cols <- names(data)[sapply(data, is.character)] #identify columns stored as char
+# =========================== Data Cleaning ===================================================
+
+#identified columns stored as char, will converted them to factor
+summary(data) 
+
+# Checking for missing values
+na_count <- colSums(is.na(data))
+print(na_count) # No missing values found
+
+# Removing unnecessary columns
+cols_to_remove <- c("Over18", "EmployeeCount", "StandardHours")
+data <- data[, !cols_to_remove, with=FALSE]
+
+#identify columns stored as char
+char_cols <- names(data)[sapply(data, is.character)]
 
 
 data[, (char_cols) := lapply(.SD, as.factor), .SDcols = char_cols]# Convert them to factors
@@ -45,9 +60,6 @@ data[, (char_cols) := lapply(.SD, as.factor), .SDcols = char_cols]# Convert them
 summary(data)
 
 
-head(data)
-str(data)
-colSums(is.na(data))  #no Na
 
 #identify all categorical and numeric data
 categorical_vars <- names(data)[sapply(data, function(col) is.character(col) || is.factor(col))]
