@@ -1,12 +1,18 @@
 # ======================== Load Libraries ==========================================================
 
-library(data.table) 
+library(data.table)
 library(car)
 library(ggplot2)
 library(caTools)
 library(rpart)
 library(rpart.plot)
-
+library(randomForest)
+library(earth)
+library(caret)
+library(mltools)
+library(dplyr)
+library(knitr)
+library(ROSE)
 #explain the variables for those ambiguously named columns
 ##ATTRITION	Employee leaving the company (0=no, 1=yes)
 #DAILY RATE	Numerical Value - Salary Level
@@ -37,6 +43,8 @@ set.seed(2025)
 data<-fread("WA_Fn-UseC_-HR-Employee-Attrition.csv", stringsAsFactors = TRUE)
 dim(data) #1470 rows, 35 columns
 
+data_encoded<-fread("WA_Fn-UseC_-HR-Employee-Attrition.csv", stringsAsFactors = TRUE)
+
 
 # =========================== Data Cleaning ===================================================
 
@@ -51,15 +59,42 @@ print(na_count) # No missing values found
 cols_to_remove <- c("Over18", "EmployeeCount", "StandardHours")
 data <- data[, !cols_to_remove, with=FALSE]
 
-#identify columns stored as char
+# Convert character columns to factor
 char_cols <- names(data)[sapply(data, is.character)]
-
-
-data[, (char_cols) := lapply(.SD, as.factor), .SDcols = char_cols]# Convert them to factors
-
+data[, (char_cols) := lapply(.SD, as.factor), .SDcols = char_cols]
 summary(data)
 
+# =========================== for Encoded Data ===================================================
 
+cols_to_remove <- c("Over18", "EmployeeCount", "StandardHours")
+data_encoded <- data_encoded[, !cols_to_remove, with = FALSE]
+
+# Binary encoding for Yes/No or Male/Female
+data_encoded[, Attrition := ifelse(Attrition == "Yes", 1, 0)]
+data_encoded[, Gender := ifelse(Gender == "Male", 1, 0)]
+data_encoded[, OverTime := ifelse(OverTime == "Yes", 1, 0)]
+
+# One-hot encode selected categorical columns
+data_encoded <- one_hot(as.data.table(data_encoded),
+                        cols = c("BusinessTravel", "Department", "EducationField", 
+                                 "JobRole", "MaritalStatus"),
+                        sparsifyNAs = FALSE)
+
+drop_dummies <- c(
+  "Department_Research & Development",         # base for Department
+  "EducationField_Life Sciences",              # base for EducationField
+  "JobRole_Sales Executive",                   # base for JobRole
+  "MaritalStatus_Married",                     # base for Marital Status
+  "BusinessTravel_Travel_Rarely"               # base for BusinessTravel
+)
+data_encoded <- data_encoded[, !drop_dummies, with = FALSE]
+
+# Convert any logical columns to numeric
+logical_cols <- names(data_encoded)[sapply(data_encoded, is.logical)]
+data_encoded[, (logical_cols) := lapply(.SD, as.integer), .SDcols = logical_cols]
+
+
+# ========================== EDA ===============================================================
 
 #identify all categorical and numeric data
 categorical_vars <- names(data)[sapply(data, function(col) is.character(col) || is.factor(col))]
@@ -173,3 +208,56 @@ for (i in 1:ncol(cat_data)) {
 #Based on the distributions of these columns it seems hourly rates were 'calculated' for salary employees. However, this calculations is useless without the number of hours the employee is actually working.
 #The rate columns provide a false representation and could therefore misrepresent it's relationship with variables such as job satisfaction.
 #In my analysis I dropped the hourly, daily, and monthly rates, and focused on the monthly income instead.
+
+# ========================== Feature Selection ==========================================
+
+# Logistic Regression
+lg_full <- glm(Attrition ~ ., data = data_encoded, family = "binomial")
+
+# Check the summary of the model
+summary(lg_full)
+
+# Check for multicollinearity > 10
+vif(lg_full)
+
+# Perform backward stepwise selection based on AIC
+lg_step <- step(lg_full, direction = "backward")
+
+# Extract and sort absolute values of coefficients
+coef_abs <- abs(coef(lg_step))
+sorted_vars <- sort(coef_abs, decreasing = TRUE)
+top_vars <- names(sorted_vars)
+
+# Print top 15 features (excluding intercept)
+top_vars[top_vars != "(Intercept)"][1:20]
+
+# ======================== Selected Features ==============================================
+
+selected_variables <- c("JobRole", "OverTime", "BusinessTravel", "EducationField", "MaritalStatus", 
+                      "JobInvolvement", "EnvironmentSatisfaction", "JobSatisfaction", "Gender",
+                      "WorkLifeBalance", "StockOptionLevel", "RelationshipSatisfaction", "TrainingTimesLastYear", 
+                      "NumCompaniesWorked")
+
+data_selected <- data[, c("Attrition", selected_variables), with = FALSE]
+
+data_selected[, Attrition := ifelse(Attrition == "Yes", 1, 0)]
+
+str(data_selected)
+
+# ======================= Smote Sampling ==========================================================
+set.seed(2025)
+
+#Train Test Set
+split <- sample.split(data_selected$Attrition, SplitRatio = 0.7)
+train <- data_selected[split == TRUE]
+test <- data_selected[split == FALSE]
+
+train_rose <- ROSE(Attrition ~ ., data = train, seed = 2025)$data
+
+#Check Class Balance
+cat("Before ROSE:\n")
+print(table(train$Attrition))
+
+cat("After ROSE:\n")
+print(table(train_rose$Attrition))
+
