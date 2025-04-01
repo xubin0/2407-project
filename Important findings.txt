@@ -1,0 +1,3 @@
+1. Performance Rating for all employees has only 2 unique values, either 3 or 4, this suggests that either the rating system is not robust enough, or supervisors are just giving 3 for poor performance and 4 for good performance.
+
+2.

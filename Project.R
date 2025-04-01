@@ -26,7 +26,6 @@ library(ROSE)
 #OVERTIME	(1=NO, 2=YES) is overtime paid? need to find out maybe? could be paid or unpaid overcome and that impacts the analysis
 #PERCENT SALARY HIKE	Numerical Value - PERCENTAGE INCREASE IN SALARY annually or during promotion or compared to industry average?
 #RELATIONS SATISFACTION	Numerical Value - RELATIONS SATISFACTION what relations?
-# STANDARD HOURS	Numerical Value - STANDARD HOURS??? what is this
 #STOCK OPTIONS LEVEL	Numerical Value - STOCK OPTIONS
 #TOTAL WORKING YEARS	Numerical Value - TOTAL YEARS WORKED i think this includes other companies
 #TRAINING TIMES LAST YEAR	Numerical Value - HOURS SPENT TRAINING
@@ -37,7 +36,9 @@ library(ROSE)
 # YEARS WITH CURRENT MANAGER	Numerical Value - YEARS SPENT WITH CURRENT MANAGER
 
 # =========================== Set WD =========================================================
-setwd("C:/Users/gyong/OneDrive - Nanyang Technological University/NTU/NTU Studies/Year 2/NTU Y2S2/BC2407/Group Project")
+
+setwd("/Users/xb/Desktop/Uni Notes/Y2S2/BC2407/project")
+
 set.seed(2025)
 
 data<-fread("WA_Fn-UseC_-HR-Employee-Attrition.csv", stringsAsFactors = TRUE)
@@ -54,6 +55,12 @@ summary(data)
 # Checking for missing values
 na_count <- colSums(is.na(data))
 print(na_count) # No missing values found
+
+##reason to remove columns:
+#reasons to remove column:
+sum(data[,Over18!="Y"]) #this column only have 1 value since it is 0, proved it only has Y
+length(unique(data[,"EmployeeCount"])) #only 1 unique value
+length(unique(data[,"StandardHours"])) #only 1 unique value
 
 # Removing unnecessary columns
 cols_to_remove <- c("Over18", "EmployeeCount", "StandardHours")
@@ -125,7 +132,6 @@ head(num_data)
 ## numerical data has some columns which are ordinal data rather than continuous.
 ##employee count is always 1, can be removed since not meaningful. but this is from viewing data directly, will prove with code later
 
-length(unique(num_data[,"EmployeeCount"])) #only 1 unique value
 
 
 
@@ -143,7 +149,7 @@ for (i in 1:ncol(cat_data)) {
 #from the bar plot, can see that over18 only has Y, proven and will be removed.
 
 
-sum(data[,Over18!="Y"]) #this column only have 1 value since it is 0, proved it only has Y
+
 
 
 #plot all numerical variables
