@@ -228,10 +228,10 @@ coef_abs <- abs(coef(lg_step))
 sorted_vars <- sort(coef_abs, decreasing = TRUE)
 top_vars <- names(sorted_vars)
 
-# Print top 15 features (excluding intercept)
+# Print top 20 features (excluding intercept)
 top_vars[top_vars != "(Intercept)"][1:20]
 
-# ======================== Selected Features ==============================================
+# ======================== Selected Features Dataset==============================================
 
 selected_variables <- c("JobRole", "OverTime", "BusinessTravel", "EducationField", "MaritalStatus", 
                       "JobInvolvement", "EnvironmentSatisfaction", "JobSatisfaction", "Gender",
@@ -244,7 +244,7 @@ data_selected[, Attrition := ifelse(Attrition == "Yes", 1, 0)]
 
 str(data_selected)
 
-# ======================= Smote Sampling ==========================================================
+# ======================= Rose Sampling ==========================================================
 set.seed(2025)
 
 #Train Test Set
@@ -254,10 +254,16 @@ test <- data_selected[split == FALSE]
 
 train_rose <- ROSE(Attrition ~ ., data = train, seed = 2025)$data
 
-#Check Class Balance
+# Create tables
+before <- table(train$Attrition)
+after<- table(train_rose$Attrition)
+
+# Print with aligned formatting
 cat("Before ROSE:\n")
-print(table(train$Attrition))
+cat(sprintf("No  : %d\n", before[["0"]]))
+cat(sprintf("Yes : %d\n\n", before[["1"]]))
 
 cat("After ROSE:\n")
-print(table(train_rose$Attrition))
+cat(sprintf("No  : %d\n", after_tbl[["0"]]))
+cat(sprintf("Yes : %d\n", after_tbl[["1"]]))
 
