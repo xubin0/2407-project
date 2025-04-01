@@ -13,6 +13,9 @@ library(mltools)
 library(dplyr)
 library(knitr)
 library(ROSE)
+library(pROC)
+
+
 #explain the variables for those ambiguously named columns
 ##ATTRITION	Employee leaving the company (0=no, 1=yes)
 #DAILY RATE	Numerical Value - Salary Level
@@ -307,3 +310,18 @@ print(results)
 print(paste("Best params - mtry:", best_params["mtry"], "ntree:", best_params["ntree"]))
 #mtry = 3 ntree = 550 is best
 #fwrite(results, "rf_grid_search_results.csv") #dont rerun this line, will overwrite previous result
+
+RF_best <- RF2 <- randomForest(Attrition ~ ., data = train_rose,
+                               importance = TRUE, ntree = 550, mtry = 3)
+print(RF_best)
+
+predicted <- predict(RF_best, newdata = test)
+confusionMatrix(predicted, test$Attrition)
+
+# Get probabilities of "Yes" class
+probs <- predict(RF_best, newdata = test, type = "prob")
+
+# Compute ROC and AUC
+roc_obj <- roc(response = test$Attrition, predictor = probs[, "Yes"])
+auc(roc_obj)  # Print AUC
+plot(roc_obj, col = "blue", main = "ROC Curve")
