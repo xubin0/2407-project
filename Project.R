@@ -59,8 +59,8 @@ print(na_count) # No missing values found
 ##reason to remove columns:
 #reasons to remove column:
 sum(data[,Over18!="Y"]) #this column only have 1 value since it is 0, proved it only has Y
-length(unique(data[,"EmployeeCount"])) #only 1 unique value
-length(unique(data[,"StandardHours"])) #only 1 unique value
+length(unique(data[,data$EmployeeCount])) #only 1 unique value
+length(unique(data[,data$StandardHours])) #only 1 unique value
 
 # Removing unnecessary columns
 cols_to_remove <- c("Over18", "EmployeeCount", "StandardHours")
@@ -114,8 +114,8 @@ num_data <- data[, ..continuous_vars]
 cat("Categorical Variables:\n", categorical_vars, "\n\n")
 cat("Continuous Variables:\n", continuous_vars, "\n\n")
 
-dim(cat_data) #9 columns of categorical variable
-dim(num_data) #26 columns of numerical variable
+dim(cat_data) #8 columns of categorical variable
+dim(num_data) #24 columns of numerical variable
 
 ##observation:
 #can see that there is a lot more continuous variable involved.many things in work places are quantified?
@@ -125,14 +125,10 @@ dim(num_data) #26 columns of numerical variable
 
 head(cat_data) 
 ## attrition is a cat data that we want to predict
-##over18 is always Y so can remove. but this is from viewing data directly, will prove with code later
 
 
 head(num_data) 
 ## numerical data has some columns which are ordinal data rather than continuous.
-##employee count is always 1, can be removed since not meaningful. but this is from viewing data directly, will prove with code later
-
-
 
 
 #get dimensions to do plotting
@@ -150,8 +146,6 @@ for (i in 1:ncol(cat_data)) {
 
 
 
-
-
 #plot all numerical variables
 par(mfrow=c(3,3)) #used 3x3 such that graphs can be bigger
 
@@ -159,15 +153,9 @@ for(i in 1:ncol(num_data)){
   boxplot(num_data[[i]], main= colnames(num_data)[i])
 } 
 #press side panel previous(under plot) to view all graphs
-##can see that employeecount has only 1 value
 
-##remove columns that has only 1 value
-cat_data<-cat_data[,Over18:=NULL] #remove column
-data<-data[,Over18:=NULL] #remove column
-
-num_data<-num_data[,EmployeeCount:=NULL] #remove column
-data<-data[,EmployeeCount:=NULL] #remove column
-
+unique(data[,data$PerformanceRating])
+#Performance rating is only 3 or 4, not a robust rating system
 
 #plotting response against numerical var
 for (i in 1:ncol(num_data)) {
@@ -213,7 +201,6 @@ for (i in 1:ncol(cat_data)) {
 #If this data relates to US employees, HR law requires hourly employees working over 40 hours in a week to be paid an overtime rate. While salary employees are paid a consistent amount regardless of the number of hours worked.
 #Based on the distributions of these columns it seems hourly rates were 'calculated' for salary employees. However, this calculations is useless without the number of hours the employee is actually working.
 #The rate columns provide a false representation and could therefore misrepresent it's relationship with variables such as job satisfaction.
-#In my analysis I dropped the hourly, daily, and monthly rates, and focused on the monthly income instead.
 
 # ========================== Feature Selection ==========================================
 
@@ -262,6 +249,7 @@ train_rose <- ROSE(Attrition ~ ., data = train, seed = 2025)$data
 
 # Create tables
 before <- table(train$Attrition)
+
 after<- table(train_rose$Attrition)
 
 # Print with aligned formatting
@@ -270,6 +258,13 @@ cat(sprintf("No  : %d\n", before[["0"]]))
 cat(sprintf("Yes : %d\n\n", before[["1"]]))
 
 cat("After ROSE:\n")
-cat(sprintf("No  : %d\n", after_tbl[["0"]]))
-cat(sprintf("Yes : %d\n", after_tbl[["1"]]))
+cat(sprintf("No  : %d\n", after[["0"]]))
+cat(sprintf("Yes : %d\n", after[["1"]]))
+
+
+#================================================== CART=================================================
+
+#================================================== RandomForest==========================================
+
+
 
