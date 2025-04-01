@@ -232,10 +232,8 @@ selected_variables <- c("JobRole", "OverTime", "BusinessTravel", "EducationField
                       "NumCompaniesWorked")
 
 data_selected <- data[, c("Attrition", selected_variables), with = FALSE]
-
-data_selected[, Attrition := ifelse(Attrition == "Yes", 1, 0)]
-
 str(data_selected)
+
 
 # ======================= Rose Sampling ==========================================================
 set.seed(2025)
@@ -254,17 +252,58 @@ after<- table(train_rose$Attrition)
 
 # Print with aligned formatting
 cat("Before ROSE:\n")
-cat(sprintf("No  : %d\n", before[["0"]]))
-cat(sprintf("Yes : %d\n\n", before[["1"]]))
+cat(sprintf("No  : %d\n", before[["No"]]))
+cat(sprintf("Yes : %d\n\n", before[["Yes"]]))
 
 cat("After ROSE:\n")
-cat(sprintf("No  : %d\n", after[["0"]]))
-cat(sprintf("Yes : %d\n", after[["1"]]))
+cat(sprintf("No  : %d\n", after[["No"]]))
+cat(sprintf("Yes : %d\n", after[["Yes"]]))
 
-
+summary(train_rose)
 #================================================== CART=================================================
 
 #================================================== RandomForest==========================================
+set.seed(2025)
+p <- ncol(train_rose) - 1  # number of predictors (excluding target)
 
+# To store results
+results <- data.table(mtry = integer(), ntree = integer(), oob_error = numeric())
 
+# To store best model
+best_error <- Inf
+best_rf <- NULL
+best_params <- c()
 
+# Grid search over mtry and ntree
+for (i in 1:p) {
+  for (j in seq(50, 800, 50)) {
+    
+    start_time <- Sys.time()
+    
+    RF2 <- randomForest(Attrition ~ ., data = train_rose,
+                        importance = TRUE, ntree = j, mtry = i)
+    
+    current_error <- RF2$err.rate[RF2$ntree, "OOB"]
+    
+    # Store current result
+    results <- rbind(results, data.table(mtry = i, ntree = j, oob_error = current_error))
+    
+    # Update best model if current is better
+    if (current_error < best_error) {
+      best_error <- current_error
+      best_rf <- RF2
+      best_params <- c(mtry = i, ntree = j)
+    }
+    
+    end_time <- Sys.time()
+    print(paste0("Tested mtry = ", i, ", ntree = ", j, 
+                 " | OOB Error = ", round(current_error, 4), 
+                 " | Time: ", round(difftime(end_time, start_time, units = "secs"), 2), "s"))
+  }
+}
+
+# Final output
+print(results)
+print(paste("Best params - mtry:", best_params["mtry"], "ntree:", best_params["ntree"]))
+#mtry = 3 ntree = 550 is best
+#fwrite(results, "rf_grid_search_results.csv") #dont rerun this line, will overwrite previous result
