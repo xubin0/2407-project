@@ -378,3 +378,20 @@ probs <- predict(RF_best, newdata = test, type = "prob")
 roc_obj <- roc(response = test$Attrition, predictor = probs[, "Yes"])
 auc(roc_obj)  # Print AUC
 plot(roc_obj, col = "blue", main = "ROC Curve")
+
+# ==================== Evaluate Random Forest Performance ==========================
+
+# Predictions on training set (after ROSE sampling)
+train_pred <- predict(RF_best, newdata = train_rose)
+train_conf <- confusionMatrix(train_pred, train_rose$Attrition)
+
+cat("Confusion Matrix - TRAINING SET:\n")
+print(train_conf)
+
+# Predictions on test set
+test_pred <- predict(RF_best, newdata = test)
+test_conf <- confusionMatrix(test_pred, test$Attrition)
+
+cat("\nConfusion Matrix - TEST SET:\n")
+print(test_conf)
+
