@@ -379,6 +379,33 @@ roc_obj <- roc(response = test$Attrition, predictor = probs[, "Yes"])
 auc(roc_obj)  # Print AUC
 plot(roc_obj, col = "blue", main = "ROC Curve")
 
+# =================== CART Performance Comparison ====================
+
+# Confusion Matrix for TRAINING set
+cart_train_conf <- confusionMatrix(train_pred_cart, train_rose$Attrition)
+cat("\nConfusion Matrix - TRAINING SET (CART):\n")
+print(cart_train_conf)
+
+# Confusion Matrix for TEST set
+cart_test_conf <- confusionMatrix(cart.predictions, test$Attrition)
+cat("\nConfusion Matrix - TEST SET (CART):\n")
+print(cart_test_conf)
+
+# =================== Compare Accuracy, Sensitivity, Specificity ====================
+
+cat("\nAccuracy:\n")
+cat("  Training:", round(cart_train_conf$overall["Accuracy"], 4), "\n")
+cat("  Test    :", round(cart_test_conf$overall["Accuracy"], 4), "\n\n")
+
+cat("Sensitivity (Recall of Yes):\n")
+cat("  Training:", round(cart_train_conf$byClass["Sensitivity"], 4), "\n")
+cat("  Test    :", round(cart_test_conf$byClass["Sensitivity"], 4), "\n\n")
+
+cat("Specificity (Recall of No):\n")
+cat("  Training:", round(cart_train_conf$byClass["Specificity"], 4), "\n")
+cat("  Test    :", round(cart_test_conf$byClass["Specificity"], 4), "\n")
+
+
 # ==================== Evaluate Random Forest Performance ==========================
 
 # Predictions on training set (after ROSE sampling)
@@ -394,4 +421,55 @@ test_conf <- confusionMatrix(test_pred, test$Attrition)
 
 cat("\nConfusion Matrix - TEST SET:\n")
 print(test_conf)
+
+# ==================== Metrics: Recall, Precision, 1 Score, UC-ROC, Balanced Accuracy==========================
+
+get_top5_metrics <- function(actual_labels, pred_class, pred_probs_yes) {
+  cm <- table(actual_labels, pred_class)
+  
+  TP <- cm["Yes", "Yes"]
+  TN <- cm["No", "No"]
+  FP <- cm["No", "Yes"]
+  FN <- cm["Yes", "No"]
+  
+  precision <- ifelse((TP + FP) == 0, NA, TP / (TP + FP))
+  recall <- ifelse((TP + FN) == 0, NA, TP / (TP + FN))
+  f1 <- ifelse((precision + recall) == 0, NA, 2 * (precision * recall) / (precision + recall))
+  specificity <- ifelse((TN + FP) == 0, NA, TN / (TN + FP))
+  balanced_acc <- (recall + specificity) / 2
+  
+  roc_obj <- roc(actual_labels, pred_probs_yes)
+  auc_val <- auc(roc_obj)
+  
+  return(list(
+    Recall = round(recall, 4),
+    Precision = round(precision, 4),
+    F1_Score = round(f1, 4),
+    AUC = round(auc_val, 4),
+    Balanced_Accuracy = round(balanced_acc, 4)
+  ))
+}
+
+
+# predicted (from RF): class predictions
+# probs: probabilities from RF
+rf_metrics_test <- get_top5_metrics(test$Attrition, predicted, probs[, "Yes"])
+
+
+# cart.predictions: class predictions
+# cart.probs: probabilities from CART
+cart_metrics_test <- get_top5_metrics(test$Attrition, cart.predictions, cart.probs[, "Yes"])
+
+
+performance_table <- data.frame(
+  Model = c("Random Forest", "CART"),
+  Recall = c(rf_metrics_test$Recall, cart_metrics_test$Recall),
+  Precision = c(rf_metrics_test$Precision, cart_metrics_test$Precision),
+  F1_Score = c(rf_metrics_test$F1_Score, cart_metrics_test$F1_Score),
+  AUC = c(rf_metrics_test$AUC, cart_metrics_test$AUC),
+  Balanced_Accuracy = c(rf_metrics_test$Balanced_Accuracy, cart_metrics_test$Balanced_Accuracy)
+)
+
+kable(performance_table, format = "markdown",
+      col.names = c("Model", "Recall", "Precision", "F1 Score", "AUC", "Balanced Accuracy"))
 
