@@ -264,7 +264,60 @@ cat(sprintf("Yes : %d\n", after[["Yes"]]))
 
 summary(train_rose)
 #================================================== CART=================================================
+set.seed(2025)
+# 1. GROW full tree with cp = 0
+cart1 <- rpart(Attrition ~ ., data = train_rose,
+               method = "class",
+               control = rpart.control(minsplit = 20, cp = 0))
 
+# 2. View and plot cross-validation error
+printcp(cart1)
+par(mfrow=c(1,1))
+plotcp(cart1, main = "Cross-validated error vs. Complexity Parameter")
+
+# 3. Find optimal cp using 1-SE rule and prune
+CVerror.cap <- cart1$cptable[which.min(cart1$cptable[,"xerror"]), "xerror"] + cart1$cptable[which.min(cart1$cptable[,"xerror"]), "xstd"]
+i <- 1; j<- 4
+while (cart1$cptable[i,j] > CVerror.cap) {
+  i <- i + 1
+}
+
+cp.opt = ifelse(i > 1, sqrt(cart1$cptable[i,1] * cart1$cptable[i-1,1]), 1)
+cp.opt
+cart2 <- prune(cart1, cp = cp.opt)
+par(mfrow=c(1,1))
+printcp(cart2, digits = 3)
+rpart.plot(cart2, nn = T, main = "Optimal Tree")
+summary(cart2)
+
+
+# 4. Variable importance
+importance <- cart2$variable.importance
+importance_percentage <- (importance / sum(importance)) * 100
+importance_df <- data.frame(Variable = names(importance_percentage),
+                            Importance = round(importance_percentage, 2))
+
+importance_df <- importance_df[order(-importance_df$Importance), ]
+rownames(importance_df) <- NULL
+print(importance_df)
+
+# 7. Predict on train set
+train_pred_cart <- predict(cart2, newdata = train_rose, type = "class")
+
+
+# 7. Predict on test set
+cart.predictions <- predict(cart2, newdata = test, type = "class")
+cart.probs <- predict(cart2, newdata = test, type = "prob")
+
+# 8. Evaluate: Confusion matrix
+confusionMatrix(train_pred_cart, train_rose$Attrition) #trainset
+confusionMatrix(cart.predictions, test$Attrition) #testset
+
+# 9. ROC and AUC
+roc_cart <- roc(response = test$Attrition, predictor = cart.probs[, "Yes"])
+auc_cart <- auc(roc_cart)
+cat("AUC:", round(auc_cart, 4), "\n")
+plot(roc_cart, col = "darkgreen", main = "ROC Curve - Pruned CART")
 #================================================== RandomForest==========================================
 set.seed(2025)
 p <- ncol(train_rose) - 1  # number of predictors (excluding target)
